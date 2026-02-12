@@ -393,6 +393,209 @@ async function handleSubmit(data: CreatePostInput) {
 }
 ```
 
+### Layout Composition Pattern
+
+**Don't rely on nested `layout.tsx` files for page chrome.** Use a composable Layout component instead.
+
+❌ **Anti-pattern:**
+```typescript
+// app/(dashboard)/layout.tsx
+// Complex conditionals bleeding into every child page
+export default function Layout({ children }) {
+  const isDeveloperSection = /* complex check */;
+  return (
+    <div className={isDeveloperSection ? "grid-with-sidebar" : "full-width"}>
+      {children}
+    </div>
+  );
+}
+```
+
+✅ **Correct pattern:**
+
+```typescript
+// components/layout/layout.tsx
+import { cn } from "@/lib/utils";
+import Navbar from "./navbar";
+import Footer from "./footer";
+
+export type LayoutStyle = "default" | "full" | "canvas" | "dashboard";
+
+interface LayoutProps {
+  children: React.ReactNode;
+  style?: LayoutStyle;
+  sidebar?: boolean;
+  className?: string;
+}
+
+export function Layout({
+  children,
+  style = "default",
+  sidebar = false,
+  className,
+}: LayoutProps) {
+  switch (style) {
+    case "dashboard":
+      return (
+        <div className={cn("flex flex-col min-h-dvh", className)}>
+          <Navbar />
+          <div className="flex flex-1">
+            {sidebar && <Sidebar />}
+            <main className="flex-1">{children}</main>
+          </div>
+        </div>
+      );
+    case "canvas":
+      // No navbar, no footer — for onboarding, auth, custom flows
+      return (
+        <div className={cn("flex flex-col min-h-dvh", className)}>
+          {children}
+        </div>
+      );
+    case "full":
+      return (
+        <div className={cn("flex flex-col min-h-dvh", className)}>
+          <Navbar sticky={false} />
+          {children}
+          <Footer />
+        </div>
+      );
+    case "default":
+    default:
+      return (
+        <div className={cn("flex flex-col min-h-dvh", className)}>
+          <Navbar sticky={true} />
+          {children}
+          <Footer />
+        </div>
+      );
+  }
+}
+```
+
+```typescript
+// Usage in pages — explicit control per-page
+import { Layout } from "@/components/layout";
+
+export default function DeveloperDashboard() {
+  return (
+    <Layout style="dashboard" sidebar>
+      {/* page content */}
+    </Layout>
+  );
+}
+
+export default function OnboardingPage() {
+  return (
+    <Layout style="canvas">
+      {/* full control, no inherited chrome */}
+    </Layout>
+  );
+}
+```
+
+**Why:** Parent `layout.tsx` cascades whether you want it or not. Composition gives per-page control without conditional gymnastics.
+
+---
+
+### Provider Composition Pattern
+
+**Don't nest providers directly in layout.tsx.** Use a `/providers` folder with a single composed export.
+
+❌ **Anti-pattern:**
+```typescript
+// app/layout.tsx — messy nesting
+export default function RootLayout({ children }) {
+  return (
+    <html>
+      <body>
+        <ClerkProvider>
+          <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
+            <ThemeProvider>
+              <PostHogProvider>
+                <TooltipProvider>
+                  {children}
+                  <Toaster />
+                </TooltipProvider>
+              </PostHogProvider>
+            </ThemeProvider>
+          </ConvexProviderWithClerk>
+        </ClerkProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+✅ **Correct pattern:**
+
+```
+providers/
+├── index.tsx         # Composed export
+├── convex.tsx        # Convex + Clerk
+├── posthog.tsx       # Analytics
+└── theme.tsx         # Theme provider
+```
+
+```typescript
+// providers/convex.tsx
+"use client";
+
+import { ConvexReactClient } from "convex/react";
+import { ConvexProviderWithClerk } from "convex/react-clerk";
+import { ClerkProvider, useAuth } from "@clerk/nextjs";
+
+const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+
+export function ConvexClientProvider({ children }: { children: React.ReactNode }) {
+  return (
+    <ClerkProvider publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}>
+      <ConvexProviderWithClerk useAuth={useAuth} client={convex}>
+        {children}
+      </ConvexProviderWithClerk>
+    </ClerkProvider>
+  );
+}
+```
+
+```typescript
+// providers/index.tsx
+import { ConvexClientProvider } from "@/providers/convex";
+import { PostHogProvider } from "@/providers/posthog";
+import { ThemeProvider } from "@/providers/theme";
+import { Toaster } from "@/components/ui/sonner";
+
+export default function Providers({ children }: { children: React.ReactNode }) {
+  return (
+    <ConvexClientProvider>
+      <PostHogProvider>
+        <ThemeProvider>
+          {children}
+          <Toaster />
+        </ThemeProvider>
+      </PostHogProvider>
+    </ConvexClientProvider>
+  );
+}
+```
+
+```typescript
+// app/layout.tsx — clean
+import Providers from "@/providers";
+
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en">
+      <body>
+        <Providers>{children}</Providers>
+      </body>
+    </html>
+  );
+}
+```
+
+**Why:** Modular providers are easier to add, remove, and debug. Each provider file owns its configuration. Root layout stays clean.
+
 ---
 
 ## 3. File Organization
