@@ -78,4 +78,4 @@ MIT
 
 ---
 
-Built by [HustleStack](https://hustlestack.dev) • Created by [Michael C. Hurley](https://michaelchurley.com)
+Created by [Michael C. Hurley](https://michaelchurley.com) • Skills for [OpenClaw](https://openclaw.ai) & [ClawHub](https://clawhub.com)
