@@ -1,6 +1,15 @@
 ---
 name: sr-next-clerk-expert
 description: Senior-level Clerk authentication expertise for Next.js 15/16+ applications. Use when implementing auth, protecting routes, fixing auth errors (500s, handshake redirects, middleware failures), integrating with Convex/Stripe, or debugging Clerk issues. Covers proxy.ts patterns, route groups, client vs server auth, and the 12 Commandments that prevent common disasters.
+env:
+  required:
+    - CLERK_SECRET_KEY
+    - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+  optional:
+    - CLERK_WEBHOOK_SECRET
+    - STRIPE_SECRET_KEY
+    - NEXT_PUBLIC_CONVEX_URL
+    - CONVEX_DEPLOYMENT
 ---
 
 # Senior Next.js + Clerk Expert
@@ -208,6 +217,47 @@ mv middleware.ts proxy.ts
 # Option 2: Codemod
 npx @next/codemod@latest middleware-to-proxy
 ```
+
+---
+
+## 🔐 Security Best Practices
+
+### Secret Management
+- **Store secrets in platform env vars** (Vercel, Railway, etc.) — never in code or git
+- **Use separate keys for dev/staging/prod** — Clerk provides different instances
+- **Rotate keys if compromised** — Clerk Dashboard → API Keys → Add new key → update env → delete old
+- **Limit access** — only team members who need keys should have dashboard access
+
+### Key Rotation Procedure
+1. Create new key in Clerk Dashboard
+2. Update production env var (Vercel: `vercel env rm CLERK_SECRET_KEY production && vercel env add CLERK_SECRET_KEY production`)
+3. Redeploy
+4. Verify auth works
+5. Delete old key from Clerk Dashboard
+
+### Webhook Security
+- **Always verify signatures** — use `svix` library (shown in references/webhooks.md)
+- **Use HTTPS endpoints only** — never expose webhook URLs over HTTP
+- **Store CLERK_WEBHOOK_SECRET securely** — same as other secrets
+
+### Debug Logging
+⚠️ **NEVER use debug mode in production:**
+```typescript
+// ❌ REMOVE BEFORE DEPLOYING
+export default clerkMiddleware(
+  async (auth, request) => { /* ... */ },
+  { debug: true }  // LEAKS TOKENS TO LOGS
+);
+```
+Debug mode logs handshake tokens (`?__clerk_handshake=`) which are sensitive. Use only in local development.
+
+### Least Privilege
+| Secret | Scope | Notes |
+|--------|-------|-------|
+| `CLERK_SECRET_KEY` | Server only | Never expose to client |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Client safe | Can be in client bundles |
+| `CLERK_WEBHOOK_SECRET` | Server only | Webhook handler only |
+| `STRIPE_SECRET_KEY` | Server only | API routes only |
 
 ---
 

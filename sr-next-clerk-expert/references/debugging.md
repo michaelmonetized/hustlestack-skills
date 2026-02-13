@@ -130,19 +130,27 @@ vercel --prod
 
 ## Debug Mode
 
-Enable debug logging in proxy.ts:
+⚠️ **LOCAL DEVELOPMENT ONLY** — Never enable in production!
+
+Debug mode logs sensitive handshake tokens that could be exploited.
 
 ```typescript
+// FOR LOCAL DEV ONLY - REMOVE BEFORE DEPLOYING
 export default clerkMiddleware(
   async (auth, request) => {
-    console.log("Auth request:", request.url);
+    if (process.env.NODE_ENV === 'development') {
+      console.log("Auth request:", request.url);
+    }
     // ... your logic
   },
-  { debug: true }
+  { debug: process.env.NODE_ENV === 'development' }
 );
 ```
 
-Check Vercel Function logs for output.
+**Before deploying:**
+1. Remove `{ debug: true }`
+2. Remove any `console.log` that logs request URLs
+3. These can expose `?__clerk_handshake=` tokens in logs
 
 ---
 
