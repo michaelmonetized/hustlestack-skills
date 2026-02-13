@@ -1,5 +1,5 @@
 ---
-name: senior-dev
+name: sr-production-engineer
 description: Production development workflow with TODO tracking, Graphite PRs, GitHub issues, Vercel deploy checks, and SMS notifications. Use when starting a new task, fixing bugs, implementing features, or any development work that needs tracked progress and code review.
 ---
 

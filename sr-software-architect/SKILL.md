@@ -1,5 +1,5 @@
 ---
-name: delegation
+name: sr-software-architect
 description: Architecture-first workflow for delegating complex projects to AI coding agents. Ensures code fits the system before it's written.
 ---
 
@@ -76,5 +76,5 @@ Before marking code complete, verify:
 
 ## Related Skills
 
-- Use `/frontend-design` for UI implementation
-- Use `/senior-dev` for PR workflow after code is written
+- Use `/sr-react-design-expert` for UI implementation
+- Use `/sr-production-engineer` for PR workflow after code is written
