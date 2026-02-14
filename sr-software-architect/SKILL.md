@@ -1,7 +1,11 @@
 ---
+
+> **Global Standards:** See [../STANDARDS.md](../STANDARDS.md) for icon library and other cross-platform standards.
 name: sr-software-architect
 description: Architecture-first workflow for delegating complex projects to AI coding agents. Ensures code fits the system before it's written.
 ---
+
+> **Global Standards:** See [../STANDARDS.md](../STANDARDS.md) for icon library and other cross-platform standards.
 
 # Delegation
 
