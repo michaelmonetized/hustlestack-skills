@@ -1,536 +1,371 @@
-# Convex Schema Design Patterns
+# SCHEMA-PATTERNS.md - Convex Schema Standards
 
-Production-ready schema patterns extracted from real applications.
+## The HurleyUS Pattern
+
+**Core principle: Colocate table definition, Zod validator, types, and CRUD in `convex/[table].ts`**
+
+### File Structure
+
+```
+convex/
+├── _generated/           # Auto-generated (don't touch)
+├── schema.ts             # Imports tables, adds indexes/search
+├── auth.config.ts        # Clerk/auth configuration
+├── users.ts              # UserTable + UserValidator + CRUD
+├── employees.ts          # EmployeeTable + EmployeeValidator + CRUD
+├── messages.ts           # MessageTable + MessageValidator + CRUD
+└── ...
+```
 
 ---
 
-## Basic Structure
+## Pattern: Table File (`convex/[table].ts`)
+
+Each table file exports 4 things:
+1. **`[Name]Table`** — Convex validators for `defineTable()`
+2. **`[Name]Validator`** — Zod schema for form validation
+3. **`type [Name]`** — TypeScript type (inferred from Zod)
+4. **CRUD functions** — Queries and mutations
+
+### Example: `convex/employees.ts`
 
 ```typescript
-// convex/schema.ts
-import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { query, mutation } from "./_generated/server";
+import { z } from "zod";
 
-export default defineSchema({
-  // Tables defined here
+// ============================================
+// 1. CONVEX TABLE DEFINITION
+// ============================================
+export const EmployeeTable = {
+  uid: v.optional(v.string()),
+  eid: v.string(),
+  first: v.string(),
+  last: v.string(),
+  phone: v.string(),
+  email: v.string(),
+  dob: v.string(),
+  status: v.union(
+    v.literal("active"),
+    v.literal("inactive"),
+    v.literal("terminated"),
+    v.literal("pending")
+  ),
+  hired: v.string(),
+  terminated: v.optional(v.string()),
+  position: v.union(
+    v.literal("cashier"),
+    v.literal("cook"),
+    v.literal("trainer"),
+    v.literal("shift leader"),
+    v.literal("gm")
+  ),
+  rate: v.string(),
+  type: v.union(v.literal("salary"), v.literal("hourly")),
+};
+
+// ============================================
+// 2. ZOD VALIDATOR (for forms/API validation)
+// ============================================
+export const EmployeeValidator = z.object({
+  uid: z.string().optional(),
+  eid: z.string().regex(/^22703-?\d{4}$/, "Invalid EID format"),
+  first: z.string().min(1, "First name is required"),
+  last: z.string().min(1, "Last name is required"),
+  phone: z.string().regex(/^\d{10}$/, "Phone must be 10 digits"),
+  email: z.string().email("Invalid email format"),
+  dob: z.string().min(1, "Date of birth is required"),
+  status: z.enum(["active", "inactive", "terminated", "pending"]),
+  hired: z.string().min(1, "Hire date is required"),
+  terminated: z.string().optional(),
+  position: z.enum(["cashier", "cook", "trainer", "shift leader", "gm"]),
+  rate: z.string().regex(/^\d+\.\d{2}$/, "Invalid rate format"),
+  type: z.enum(["salary", "hourly"]),
+});
+
+// ============================================
+// 3. TYPESCRIPT TYPE
+// ============================================
+export type Employee = z.infer<typeof EmployeeValidator>;
+
+// ============================================
+// 4. CRUD FUNCTIONS
+// ============================================
+export const createEmployee = mutation({
+  args: EmployeeTable,
+  handler: async (ctx, args) => {
+    return await ctx.db.insert("employees", args);
+  },
+});
+
+export const listEmployees = query({
+  args: {
+    status: v.optional(v.union(
+      v.literal("active"),
+      v.literal("inactive"),
+      v.literal("terminated"),
+      v.literal("pending")
+    )),
+  },
+  returns: v.array(v.object({
+    _id: v.id("employees"),
+    _creationTime: v.number(),
+    ...EmployeeTable,
+  })),
+  handler: async (ctx, args) => {
+    let query = ctx.db.query("employees");
+    
+    if (args.status) {
+      query = query.withIndex("by_status", (q) => q.eq("status", args.status!));
+    }
+    
+    return await query.collect();
+  },
+});
+
+export const getEmployee = query({
+  args: { id: v.id("employees") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.id);
+  },
+});
+
+export const updateEmployee = mutation({
+  args: {
+    id: v.id("employees"),
+    ...Object.fromEntries(
+      Object.entries(EmployeeTable).map(([k, v]) => [k, v.isOptional ? v : v.optional()])
+    ),
+  },
+  handler: async (ctx, args) => {
+    const { id, ...updates } = args;
+    const filtered = Object.fromEntries(
+      Object.entries(updates).filter(([_, v]) => v !== undefined)
+    );
+    await ctx.db.patch(id, filtered);
+  },
+});
+
+export const deleteEmployee = mutation({
+  args: { id: v.id("employees") },
+  handler: async (ctx, args) => {
+    await ctx.db.delete(args.id);
+  },
 });
 ```
 
 ---
 
-## Validator Types
+## Pattern: Schema File (`convex/schema.ts`)
 
-### Primitives
+**Schema.ts ONLY handles:**
+- Importing table definitions
+- Defining indexes
+- Defining search indexes
+
 ```typescript
-v.string()              // string
-v.number()              // number (int or float)
-v.boolean()             // boolean
-v.null()                // null literal
-v.int64()               // BigInt
-v.bytes()               // ArrayBuffer
-```
+import { defineSchema, defineTable } from "convex/server";
+import { UserTable } from "./users";
+import { EmployeeTable } from "./employees";
+import { MessageTable } from "./messages";
+import { TaskTable } from "./tasks";
 
-### Optional & Nullable
-```typescript
-v.optional(v.string())  // string | undefined (field can be missing)
-v.union(v.string(), v.null())  // string | null (field present but null)
-v.optional(v.union(v.string(), v.null()))  // string | null | undefined
-```
-
-### Complex Types
-```typescript
-v.array(v.string())     // string[]
-v.object({              // { name: string, age: number }
-  name: v.string(),
-  age: v.number(),
-})
-v.any()                 // any (use sparingly)
-```
-
-### IDs & References
-```typescript
-v.id("users")           // Id<"users"> - reference to users table
-v.id("_storage")        // Id<"_storage"> - Convex file storage
-```
-
-### Literal & Union (Enums)
-```typescript
-// String literal (single value)
-v.literal("admin")
-
-// Union of literals (enum-like)
-v.union(
-  v.literal("pending"),
-  v.literal("active"),
-  v.literal("completed")
-)
-
-// Reusable validator
-const statusValidator = v.union(
-  v.literal("pending"),
-  v.literal("active"),
-  v.literal("completed")
-);
-```
-
----
-
-## Index Patterns
-
-### Single-Field Index
-```typescript
-.index("by_email", ["email"])
-.index("by_created", ["createdAt"])
-```
-
-### Compound Index (Multi-Field)
-```typescript
-// Query: profileId + status
-.index("by_profile_status", ["profileId", "status"])
-
-// Query with range
-.index("by_status_created", ["status", "createdAt"])
-```
-
-### Index Usage
-```typescript
-// Single field
-await ctx.db
-  .query("users")
-  .withIndex("by_email", (q) => q.eq("email", email))
-  .first();
-
-// Compound index - must use fields in order
-await ctx.db
-  .query("matches")
-  .withIndex("by_profile_status", (q) => 
-    q.eq("profileId", profileId).eq("status", "active")
-  )
-  .collect();
-
-// Range query on last field
-await ctx.db
-  .query("activities")
-  .withIndex("by_status_created", (q) =>
-    q.eq("status", "pending").gte("createdAt", cutoff)
-  )
-  .collect();
-```
-
-### Search Index
-```typescript
-.searchIndex("search_content", {
-  searchField: "content",
-  filterFields: ["isPublished", "authorId"],
-})
-
-// Usage
-await ctx.db
-  .query("posts")
-  .withSearchIndex("search_content", (q) =>
-    q.search("content", searchTerm).eq("isPublished", true)
-  )
-  .take(10);
-```
-
----
-
-## Common Table Patterns
-
-### User Profile (Clerk Extension)
-```typescript
-profiles: defineTable({
-  // Clerk user ID - NEVER store as indexed email
-  clerkId: v.string(),
-  
-  // Basic info
-  name: v.string(),
-  email: v.optional(v.string()),  // Denormalized from Clerk
-  avatarUrl: v.optional(v.string()),
-  
-  // Profile details
-  headline: v.optional(v.string()),
-  bio: v.optional(v.string()),
-  location: v.optional(v.string()),
-  
-  // Settings/preferences
-  plan: v.union(v.literal("free"), v.literal("pro"), v.literal("enterprise")),
-  preferences: v.optional(v.object({
-    theme: v.union(v.literal("light"), v.literal("dark")),
-    notifications: v.boolean(),
-  })),
-  
-  // Timestamps
-  createdAt: v.number(),
-  updatedAt: v.number(),
-})
-  .index("by_clerk", ["clerkId"])  // Primary lookup
-  .index("by_email", ["email"])    // Optional search
-  .index("by_plan", ["plan"]),     // Filter by plan
-```
-
-### Items with Owner
-```typescript
-posts: defineTable({
-  authorId: v.id("profiles"),
-  
-  // Content
-  title: v.string(),
-  content: v.string(),
-  excerpt: v.optional(v.string()),
-  
-  // Media
-  coverImage: v.optional(v.id("_storage")),
-  
-  // Status
-  status: v.union(
-    v.literal("draft"),
-    v.literal("published"),
-    v.literal("archived")
-  ),
-  publishedAt: v.optional(v.number()),
-  
-  // Engagement
-  viewCount: v.number(),
-  likeCount: v.number(),
-  
-  // Timestamps
-  createdAt: v.number(),
-  updatedAt: v.number(),
-})
-  .index("by_author", ["authorId"])
-  .index("by_status", ["status"])
-  .index("by_author_status", ["authorId", "status"])
-  .index("by_published", ["publishedAt"])
-  .searchIndex("search_posts", {
-    searchField: "content",
-    filterFields: ["status", "authorId"],
-  }),
-```
-
-### Many-to-Many Relationship (Junction Table)
-```typescript
-// Skills can be added to multiple profiles
-// Profiles can have multiple skills
-profile_skills: defineTable({
-  profileId: v.id("profiles"),
-  skillId: v.id("skills"),
-  
-  // Relationship metadata
-  proficiency: v.union(
-    v.literal("beginner"),
-    v.literal("intermediate"),
-    v.literal("advanced"),
-    v.literal("expert")
-  ),
-  yearsUsed: v.optional(v.number()),
-  
-  // Social
-  endorsed: v.boolean(),
-  endorsements: v.number(),
-  
-  // Timestamps
-  addedAt: v.number(),
-})
-  .index("by_profile", ["profileId"])
-  .index("by_skill", ["skillId"])
-  .index("by_profile_skill", ["profileId", "skillId"]),  // Unique lookup
-```
-
-### Queue/Job Table
-```typescript
-notification_queue: defineTable({
-  // Target
-  profileId: v.id("profiles"),
-  
-  // Type
-  type: v.union(v.literal("email"), v.literal("push"), v.literal("in_app")),
-  priority: v.union(v.literal("low"), v.literal("normal"), v.literal("high"), v.literal("urgent")),
-  
-  // Content
-  template: v.string(),
-  data: v.any(),
-  
-  // Processing
-  status: v.union(
-    v.literal("pending"),
-    v.literal("processing"),
-    v.literal("sent"),
-    v.literal("failed"),
-    v.literal("cancelled")
-  ),
-  
-  // Retry logic
-  attempts: v.number(),
-  maxAttempts: v.number(),
-  lastAttemptAt: v.optional(v.number()),
-  lastError: v.optional(v.string()),
-  
-  // Scheduling
-  scheduledFor: v.number(),
-  sentAt: v.optional(v.number()),
-  
-  // Response
-  response: v.optional(v.any()),
-  
-  // Deduplication
-  idempotencyKey: v.optional(v.string()),
-  
-  // Timestamps
-  createdAt: v.number(),
-  updatedAt: v.number(),
-})
-  .index("by_profile", ["profileId"])
-  .index("by_status", ["status"])
-  .index("by_status_scheduled", ["status", "scheduledFor"])  // For processing
-  .index("by_idempotency", ["idempotencyKey"]),
-```
-
-### Subscription/Billing
-```typescript
-subscriptions: defineTable({
-  // Owner
-  profileId: v.id("profiles"),
-  
-  // Stripe IDs
-  stripeCustomerId: v.string(),
-  stripeSubscriptionId: v.string(),
-  stripePriceId: v.string(),
-  stripeProductId: v.optional(v.string()),
-  
-  // Plan info
-  plan: v.union(v.literal("free"), v.literal("pro"), v.literal("premium"), v.literal("enterprise")),
-  billingInterval: v.union(v.literal("monthly"), v.literal("annual")),
-  
-  // Status
-  status: v.union(
-    v.literal("active"),
-    v.literal("past_due"),
-    v.literal("canceled"),
-    v.literal("incomplete"),
-    v.literal("trialing"),
-    v.literal("paused")
-  ),
-  
-  // Billing period
-  currentPeriodStart: v.number(),
-  currentPeriodEnd: v.number(),
-  
-  // Trial
-  trialStart: v.optional(v.number()),
-  trialEnd: v.optional(v.number()),
-  
-  // Cancellation
-  cancelAtPeriodEnd: v.boolean(),
-  canceledAt: v.optional(v.number()),
-  cancellationReason: v.optional(v.string()),
-  
-  // Timestamps
-  createdAt: v.number(),
-  updatedAt: v.number(),
-})
-  .index("by_profile", ["profileId"])
-  .index("by_stripe_customer", ["stripeCustomerId"])
-  .index("by_stripe_subscription", ["stripeSubscriptionId"])
-  .index("by_status", ["status"]),
-```
-
-### Chat/Messages (Real-Time)
-```typescript
-chat_sessions: defineTable({
-  // Participants
-  profileId: v.id("profiles"),
-  assignedTo: v.optional(v.id("users_admin")),
-  
-  // Session info
-  topic: v.optional(v.string()),
-  initialMessage: v.string(),
-  
-  // Status
-  status: v.union(
-    v.literal("waiting"),
-    v.literal("active"),
-    v.literal("ended"),
-    v.literal("abandoned")
-  ),
-  
-  // Metrics
-  messageCount: v.number(),
-  waitTime: v.optional(v.number()),  // Seconds before agent joined
-  duration: v.optional(v.number()),   // Seconds of active session
-  
-  // Feedback
-  satisfactionRating: v.optional(v.number()),
-  satisfactionFeedback: v.optional(v.string()),
-  
-  // Timestamps
-  createdAt: v.number(),
-  assignedAt: v.optional(v.number()),
-  endedAt: v.optional(v.number()),
-})
-  .index("by_profile", ["profileId"])
-  .index("by_status", ["status"])
-  .index("by_assigned", ["assignedTo"]),
-
-chat_messages: defineTable({
-  sessionId: v.id("chat_sessions"),
-  
-  // Sender
-  senderType: v.union(v.literal("user"), v.literal("agent"), v.literal("bot")),
-  senderProfileId: v.optional(v.id("profiles")),
-  senderAdminId: v.optional(v.id("users_admin")),
-  
-  // Content
-  content: v.string(),
-  messageType: v.union(v.literal("text"), v.literal("image"), v.literal("system")),
-  
-  // Status
-  readAt: v.optional(v.number()),
-  
-  // Timestamps
-  createdAt: v.number(),
-})
-  .index("by_session", ["sessionId"]),
-```
-
-### API Keys
-```typescript
-api_apps: defineTable({
-  ownerProfileId: v.id("profiles"),
-  
-  // App info
-  name: v.string(),
-  description: v.optional(v.string()),
-  websiteUrl: v.optional(v.string()),
-  
-  // OAuth
-  redirectUris: v.optional(v.array(v.string())),
-  scopes: v.array(v.string()),
-  
-  // Status
-  status: v.union(
-    v.literal("pending"),
-    v.literal("approved"),
-    v.literal("suspended"),
-    v.literal("revoked")
-  ),
-  
-  // Rate limits
-  tier: v.union(v.literal("free"), v.literal("basic"), v.literal("pro"), v.literal("enterprise")),
-  rateLimitPerMinute: v.number(),
-  rateLimitPerDay: v.number(),
-  
-  // Timestamps
-  createdAt: v.number(),
-  updatedAt: v.number(),
-})
-  .index("by_owner_profile", ["ownerProfileId"])
-  .index("by_status", ["status"]),
-
-api_keys: defineTable({
-  appId: v.id("api_apps"),
-  
-  // Key info (never store full key!)
-  name: v.string(),
-  keyPrefix: v.string(),  // First 8 chars for display (sk_abc1234...)
-  keyHash: v.string(),    // Hash for lookup
-  
-  // Environment
-  environment: v.union(v.literal("test"), v.literal("live")),
-  
-  // Status
-  isActive: v.boolean(),
-  expiresAt: v.optional(v.number()),
-  
-  // Usage tracking
-  lastUsedAt: v.optional(v.number()),
-  lastUsedIp: v.optional(v.string()),
-  
-  // Revocation
-  revokedAt: v.optional(v.number()),
-  revokedReason: v.optional(v.string()),
-  
-  // Timestamps
-  createdAt: v.number(),
-})
-  .index("by_app", ["appId"])
-  .index("by_key_prefix", ["keyPrefix"]),
-```
-
----
-
-## Anti-Patterns
-
-### ❌ Storing Arrays That Grow Unbounded
-```typescript
-// WRONG - document size grows forever
-posts: defineTable({
-  likedBy: v.array(v.id("profiles")),  // Could be millions!
-})
-
-// CORRECT - separate table
-post_likes: defineTable({
-  postId: v.id("posts"),
-  profileId: v.id("profiles"),
-  createdAt: v.number(),
-})
-  .index("by_post", ["postId"])
-  .index("by_profile", ["profileId"])
-  .index("by_post_profile", ["postId", "profileId"]),
-```
-
-### ❌ Deep Nesting
-```typescript
-// WRONG - hard to query, update, index
-profiles: defineTable({
-  settings: v.object({
-    notifications: v.object({
-      email: v.object({
-        marketing: v.boolean(),
-        updates: v.boolean(),
-      }),
+export default defineSchema({
+  // Users
+  users: defineTable(UserTable)
+    .index("by_uid", ["uid"])
+    .index("by_email", ["email"])
+    .index("by_phone", ["phone"])
+    .searchIndex("search_users", {
+      searchField: "email",
+      filterFields: ["first", "last", "phone"],
     }),
-  }),
-})
 
-// CORRECT - flat structure
-profiles: defineTable({
-  emailMarketing: v.boolean(),
-  emailUpdates: v.boolean(),
+  // Employees
+  employees: defineTable(EmployeeTable)
+    .index("by_uid", ["uid"])
+    .index("by_eid", ["eid"])
+    .index("by_email", ["email"])
+    .index("by_status", ["status"])
+    .index("by_position", ["position"])
+    .searchIndex("search_employees", {
+      searchField: "first",
+      filterFields: ["last", "eid", "email", "status", "position"],
+    }),
+
+  // Messages
+  messages: defineTable(MessageTable)
+    .index("by_from", ["from"])
+    .index("by_to", ["to"])
+    .searchIndex("search_messages", {
+      searchField: "message",
+      filterFields: ["from", "to"],
+    }),
+
+  // Tasks
+  tasks: defineTable(TaskTable)
+    .index("by_status", ["status"])
+    .index("by_assignee", ["assignee"])
+    .index("by_status_and_assignee", ["status", "assignee"]),
+});
+```
+
+---
+
+## Index Naming Convention
+
+| Pattern | Example | Use Case |
+|---------|---------|----------|
+| `by_[field]` | `by_status` | Single field lookup |
+| `by_[field1]_and_[field2]` | `by_employee_and_date` | Compound lookup |
+| `search_[table]` | `search_employees` | Full-text search |
+| `search_[table]_[field]` | `search_employees_name` | Search on specific field |
+
+---
+
+## Validator Patterns
+
+### Union Types (Enums)
+
+```typescript
+// Convex validator
+status: v.union(
+  v.literal("draft"),
+  v.literal("published"),
+  v.literal("archived")
+),
+
+// Zod equivalent
+status: z.enum(["draft", "published", "archived"]),
+```
+
+### Optional Fields
+
+```typescript
+// Convex
+terminated: v.optional(v.string()),
+
+// Zod
+terminated: z.string().optional(),
+```
+
+### Nested Objects
+
+```typescript
+// Convex
+docs: v.optional(v.array(v.object({
+  label: v.string(),
+  url: v.string(),
+  uploadedAt: v.string(),
+}))),
+
+// Zod
+docs: z.array(z.object({
+  label: z.string(),
+  url: z.string(),
+  uploadedAt: z.string(),
+})).optional(),
+```
+
+### ID References
+
+```typescript
+// Convex - reference to another table
+authorId: v.id("users"),
+avatar: v.optional(v.id("_storage")),
+
+// Zod - just a string (IDs are strings in transit)
+authorId: z.string(),
+avatar: z.string().optional(),
+```
+
+---
+
+## Why This Pattern?
+
+### Benefits
+
+1. **Colocation** — Types, validators, and CRUD live together
+2. **DRY** — Table shape defined once, used by Convex AND Zod
+3. **Separation** — schema.ts only handles DB concerns (indexes)
+4. **Scalability** — Each domain is self-contained
+5. **IDE Support** — Jump to definition works naturally
+6. **Testing** — Can test validators independently
+
+### Compared to Other Patterns
+
+| Approach | Pros | Cons |
+|----------|------|------|
+| **HurleyUS (this)** | Colocated, DRY, scalable | Requires Zod dependency |
+| **All in schema.ts** | Simple | Gets unwieldy, no form validation |
+| **Separate types file** | Centralized types | Duplication, drift risk |
+
+---
+
+## Form Integration
+
+### With react-hook-form
+
+```typescript
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { EmployeeValidator, type Employee } from "@/convex/employees";
+
+function EmployeeForm() {
+  const form = useForm<Employee>({
+    resolver: zodResolver(EmployeeValidator),
+    defaultValues: {
+      status: "pending",
+      type: "hourly",
+    },
+  });
+
+  // Form validated by Zod before submission
+  const onSubmit = (data: Employee) => {
+    createEmployee(data);
+  };
+}
+```
+
+### Server-Side Validation
+
+The Convex validators (`EmployeeTable`) automatically validate on the server. Zod is for client-side form UX — Convex handles the source of truth.
+
+---
+
+## Search Index Patterns
+
+### Basic Search
+
+```typescript
+.searchIndex("search_employees", {
+  searchField: "first",  // Primary search field
+  filterFields: ["last", "email", "status"],  // Can filter results
 })
 ```
 
-### ❌ No Timestamps
+### Using Search
+
 ```typescript
-// WRONG - no audit trail
-posts: defineTable({
-  title: v.string(),
-})
-
-// CORRECT - always add timestamps
-posts: defineTable({
-  title: v.string(),
-  createdAt: v.number(),
-  updatedAt: v.number(),
-})
-```
-
-### ❌ Missing Indexes
-```typescript
-// WRONG - this query scans entire table
-const posts = await ctx.db
-  .query("posts")
-  .filter((q) => q.eq(q.field("authorId"), authorId))  // No index!
-  .collect();
-
-// CORRECT - use index
-posts: defineTable({ ... })
-  .index("by_author", ["authorId"])
-
-const posts = await ctx.db
-  .query("posts")
-  .withIndex("by_author", (q) => q.eq("authorId", authorId))
-  .collect();
+export const searchEmployees = query({
+  args: { 
+    query: v.string(),
+    status: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    let search = ctx.db
+      .query("employees")
+      .withSearchIndex("search_employees", (q) => 
+        q.search("first", args.query)
+      );
+    
+    if (args.status) {
+      search = search.filter((q) => q.eq(q.field("status"), args.status));
+    }
+    
+    return await search.collect();
+  },
+});
 ```
 
 ---
@@ -539,10 +374,14 @@ const posts = await ctx.db
 
 When changing schema:
 
-1. **Adding fields**: Use `v.optional()` initially
-2. **Adding indexes**: Safe to add anytime
-3. **Adding tables**: Safe to add anytime
-4. **Removing fields**: Remove from schema AFTER all docs updated
-5. **Changing field types**: Never! Create new field, migrate, remove old
-6. **Removing indexes**: Safe if no queries use it
-7. **Removing tables**: Only after all references removed
+1. [ ] Update `[Table]Table` validators
+2. [ ] Update `[Table]Validator` Zod schema
+3. [ ] Update TypeScript type (automatic if inferred)
+4. [ ] Update CRUD functions if args changed
+5. [ ] Update indexes in schema.ts if new fields
+6. [ ] Run `npx convex dev` to validate
+7. [ ] Test locally before deploying
+
+---
+
+*Based on production patterns from getat.me and waynesville.yourzaxbys.com*
