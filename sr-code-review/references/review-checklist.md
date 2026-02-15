@@ -1,251 +1,217 @@
 # Code Review Checklist
 
-Comprehensive checklist organized by category. Not every item applies to every review.
+Use this checklist for systematic reviews. Not every item applies to every review.
 
 ---
 
-## Table of Contents
-1. [Correctness](#correctness)
-2. [Security](#security)
-3. [Architecture](#architecture)
-4. [Convex Backend](#convex-backend)
-5. [Frontend / React](#frontend--react)
-6. [Performance](#performance)
-7. [Error Handling](#error-handling)
-8. [Documentation](#documentation)
-9. [Testing](#testing)
-10. [Git / PR Hygiene](#git--pr-hygiene)
-
----
-
-## Correctness
+## 1. Correctness
 
 ### Logic
-- [ ] Code does what the PR/issue description says
-- [ ] Edge cases handled (empty arrays, null values, zero)
-- [ ] Off-by-one errors checked
-- [ ] Race conditions considered for async code
-- [ ] State mutations don't cause infinite loops
+- [ ] Does the code do what it's supposed to?
+- [ ] Are edge cases handled?
+- [ ] Are error conditions handled gracefully?
+- [ ] Is the logic readable and followable?
 
-### Types
-- [ ] No `any` types without justification
-- [ ] Nullable values checked before use
-- [ ] Type assertions (`as X`) are justified
-- [ ] Generic types used appropriately
+### Data
+- [ ] Are data transformations correct?
+- [ ] Are null/undefined cases handled?
+- [ ] Are array bounds checked?
+- [ ] Are type coercions explicit?
 
 ---
 
-## Security
+## 2. Architecture
+
+### Structure
+- [ ] Does it fit the project's architecture?
+- [ ] Is it in the right layer? (UI, business logic, data)
+- [ ] Are dependencies pointing in the right direction?
+- [ ] Is it appropriately coupled/decoupled?
+
+### Abstractions
+- [ ] Are abstractions at the right level?
+- [ ] Is there unnecessary abstraction?
+- [ ] Are there missing abstractions?
+- [ ] Do names reflect the abstraction?
+
+### Patterns
+- [ ] Does it follow established patterns in the codebase?
+- [ ] If introducing a new pattern, is it justified?
+- [ ] Are sr-* skill patterns followed?
+
+---
+
+## 3. Convex-Specific (if applicable)
+
+### Schema
+- [ ] All query filter fields indexed?
+- [ ] Using `_id` not `id`?
+- [ ] Using `_creationTime` not custom `createdAt`?
+- [ ] New fields are `v.optional()`?
+- [ ] Field types match existing data?
+
+### Functions
+- [ ] Queries don't mutate state?
+- [ ] Mutations check auth when needed?
+- [ ] Actions used for external APIs?
+- [ ] Internal functions for sensitive logic?
+
+### Deployment
+- [ ] `--cmd` wrapper in build script?
+- [ ] Migrations for breaking changes?
+
+---
+
+## 4. Next.js-Specific (if applicable)
+
+### Routing
+- [ ] Correct use of app router patterns?
+- [ ] Route groups used appropriately?
+- [ ] Dynamic routes have proper validation?
+
+### Auth (Clerk)
+- [ ] Protected routes use `proxy.ts`?
+- [ ] Client components use `useAuth()`?
+- [ ] Server components use `auth()`?
+- [ ] Redirect URLs configured?
+
+### Performance
+- [ ] Unnecessary client components?
+- [ ] Missing Suspense boundaries?
+- [ ] Large bundles could be lazy loaded?
+
+---
+
+## 5. Security
 
 ### Authentication
-- [ ] All mutations verify `ctx.auth.getUserIdentity()`
-- [ ] Null identity handled (throw or return early)
-- [ ] Ownership verified before modifying user data
-- [ ] No auth bypass via optional parameters
+- [ ] Auth checks on protected endpoints?
+- [ ] Auth state verified server-side?
+- [ ] No auth bypass possible?
 
 ### Authorization
-- [ ] Role checks where required
-- [ ] Can't escalate own privileges
-- [ ] Admin-only routes protected
-- [ ] Team/org membership verified
+- [ ] User can only access their data?
+- [ ] Role checks where needed?
+- [ ] Ownership verified in mutations?
 
-### Data Validation
-- [ ] User input validated with Zod/Convex validators
-- [ ] File uploads checked (type, size)
-- [ ] URLs validated before fetch
-- [ ] No SQL/NoSQL injection vectors
+### Input
+- [ ] User input validated?
+- [ ] SQL/NoSQL injection prevented?
+- [ ] XSS prevented?
 
 ### Secrets
-- [ ] No API keys in code
-- [ ] No tokens in client-side code
-- [ ] Secrets in env vars or Convex dashboard
-- [ ] `.env` files in `.gitignore`
+- [ ] No hardcoded API keys?
+- [ ] No secrets in client code?
+- [ ] Env vars used for config?
 
 ---
 
-## Architecture
+## 6. Performance
 
-### System Fit
-- [ ] Follows patterns established in codebase
-- [ ] Matches architecture in PLAN.md/ARCHITECTURE.md
-- [ ] Right level of abstraction
-- [ ] No unnecessary coupling between modules
-
-### Convex Schema
-- [ ] Schema matches data requirements
-- [ ] Relationships use `v.id("table")` not strings
-- [ ] Denormalization justified for read performance
-- [ ] No circular dependencies
-
-### File Organization
-- [ ] Files in correct directories
-- [ ] Feature folders for complex features
-- [ ] Shared code in appropriate location
-- [ ] No orphaned/unused files
-
----
-
-## Convex Backend
-
-### Schema [sr-convex-expert]
-- [ ] Uses `_id` not custom `id` field
-- [ ] No `createdAt` field (use `_creationTime`)
-- [ ] `updatedAt` defined only if needed
-- [ ] New fields are `v.optional()`
-- [ ] All query filter fields indexed
-
-### Queries
-- [ ] Uses `.withIndex()` for filtered queries
-- [ ] Pagination for large result sets
-- [ ] No `.collect()` without limits on large tables
-- [ ] Returns minimal data needed
-
-### Mutations
-- [ ] Auth check at top of handler
-- [ ] Ownership verified for user data
-- [ ] Atomic operations where needed
-- [ ] No external API calls (use actions)
-
-### Actions
-- [ ] Used only for external APIs/side effects
-- [ ] Timeouts considered for long operations
-- [ ] Errors handled and logged
-- [ ] Retries for transient failures
-
-### HTTP Actions
-- [ ] Webhook signatures verified
-- [ ] Request body validated
-- [ ] Appropriate status codes returned
-- [ ] CORS configured if needed
-
----
-
-## Frontend / React
-
-### Components [sr-react-design-expert]
-- [ ] All interactive states (hover, active, disabled, loading)
-- [ ] Loading states for async data
-- [ ] Error states with recovery options
-- [ ] Empty states for lists
-- [ ] Accessible (keyboard, screen reader)
-
-### Hooks
-- [ ] Dependencies array correct in useEffect
-- [ ] No infinite re-render loops
-- [ ] Cleanup functions for subscriptions
-- [ ] useMemo/useCallback where beneficial
-
-### Data Fetching
-- [ ] Uses Convex `useQuery` for real-time data
-- [ ] Loading states while data undefined
-- [ ] Error boundaries for component errors
-- [ ] No fetch in useEffect for Convex data
-
-### Forms
-- [ ] Validation before submit
-- [ ] Error messages displayed
-- [ ] Loading state during submit
-- [ ] Success feedback to user
-- [ ] Prevents double submission
-
----
-
-## Performance
-
-### Queries
-- [ ] Indexed queries (no full table scans)
-- [ ] Pagination for large lists
-- [ ] No N+1 query patterns
-- [ ] Minimal data fetched (select fields)
-
-### Rendering
-- [ ] No unnecessary re-renders
-- [ ] Large lists use virtualization
-- [ ] Images optimized and lazy-loaded
-- [ ] Bundle size considered
-
-### Network
-- [ ] No redundant API calls
-- [ ] Debounced search/filter inputs
-- [ ] Optimistic updates where appropriate
-- [ ] Proper caching strategy
-
----
-
-## Error Handling
-
-### Backend
-- [ ] Try/catch for external calls
-- [ ] Meaningful error messages
-- [ ] Errors don't leak sensitive data
-- [ ] Logging for debugging
+### Database
+- [ ] No N+1 queries?
+- [ ] Indexes on filtered/sorted fields?
+- [ ] Pagination for lists?
+- [ ] Unnecessary data not fetched?
 
 ### Frontend
-- [ ] Error boundaries catch render errors
-- [ ] Network errors handled gracefully
-- [ ] User-friendly error messages
-- [ ] Retry options where appropriate
+- [ ] No unnecessary re-renders?
+- [ ] Expensive computations memoized?
+- [ ] Images optimized?
+- [ ] Large dependencies avoided?
+
+### General
+- [ ] No obvious bottlenecks?
+- [ ] Async operations where appropriate?
 
 ---
 
-## Documentation
+## 7. Maintainability
 
-### Code Comments
-- [ ] Complex logic explained
-- [ ] "Why" comments for non-obvious decisions
-- [ ] No commented-out code
-- [ ] JSDoc for public APIs
+### Naming
+- [ ] Variables/functions clearly named?
+- [ ] Names match behavior?
+- [ ] Consistent naming conventions?
 
-### Project Docs
-- [ ] README updated if setup changed
-- [ ] CHANGELOG entry for user-facing changes
-- [ ] PLAN.md updated if architecture changed
-- [ ] API docs for new endpoints
+### Comments
+- [ ] Complex logic explained?
+- [ ] No redundant comments?
+- [ ] TODOs have context/tickets?
 
----
+### Structure
+- [ ] Functions are focused (single responsibility)?
+- [ ] Files aren't too large?
+- [ ] Related code grouped together?
 
-## Testing
-
-### Unit Tests
-- [ ] Critical business logic tested
-- [ ] Edge cases covered
-- [ ] Mocks appropriate (not excessive)
-
-### Integration Tests
-- [ ] Happy path works end-to-end
-- [ ] Error paths handled
-- [ ] Auth flows tested
+### DRY
+- [ ] No copy-paste duplication?
+- [ ] Reusable code extracted?
+- [ ] But not over-abstracted?
 
 ---
 
-## Git / PR Hygiene
+## 8. Documentation
 
-### Commits
-- [ ] Atomic commits (one logical change)
-- [ ] Clear commit messages
-- [ ] No "WIP" or "fix" only messages
-- [ ] No committed secrets/credentials
+### Code
+- [ ] Public APIs documented?
+- [ ] Complex types explained?
+- [ ] Non-obvious decisions commented?
 
-### PR
-- [ ] Description explains what and why
-- [ ] Links to issue if applicable
-- [ ] Reasonable size (< 500 lines ideal)
-- [ ] CI passing
-- [ ] No unrelated changes
-
-### Branch
-- [ ] Named descriptively (feat/, fix/, etc.)
-- [ ] Up to date with main
-- [ ] No merge commits (rebased)
+### Project
+- [ ] README updated if needed?
+- [ ] CHANGELOG entry for user-facing changes?
+- [ ] TODO.md updated?
+- [ ] PLAN.md aligned with changes?
 
 ---
 
-## Quick Reject Criteria
+## 9. Testing (if tests exist)
 
-Immediately request changes if any of these are present:
+### Coverage
+- [ ] Happy path tested?
+- [ ] Edge cases tested?
+- [ ] Error cases tested?
 
-1. **Auth bypass** — Mutation modifies data without identity check
-2. **Secrets in code** — API keys, tokens hardcoded
-3. **Breaking schema** — Type change without migration
-4. **No error handling** — Unhandled async/promises
-5. **Injection risk** — Unvalidated user input in queries
+### Quality
+- [ ] Tests are focused?
+- [ ] Tests are readable?
+- [ ] Tests don't test implementation details?
+
+---
+
+## 10. Style
+
+### Formatting
+- [ ] Consistent with codebase?
+- [ ] No obvious linting issues?
+
+### Conventions
+- [ ] Import ordering consistent?
+- [ ] File structure consistent?
+- [ ] TypeScript strictness maintained?
+
+---
+
+## Review Output Template
+
+```markdown
+## Review: [PR Title / Component Name]
+
+### Critical (Must Fix)
+- [ ] Issue with citation
+
+### Should Fix
+- [ ] Issue with citation
+
+### Suggestions
+- [ ] Nice-to-have improvement
+
+### Nits
+- [ ] Minor style/naming thing
+
+### Questions
+- [ ] Clarification needed
+
+### Good Stuff 👍
+- Positive observations
+```

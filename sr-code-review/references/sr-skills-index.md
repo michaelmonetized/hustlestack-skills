@@ -1,136 +1,134 @@
 # sr-* Skills Index
 
-Quick reference for citing best practices in code reviews.
-
----
-
-## Architecture & Planning
-
-### sr-software-architect
-**Domain:** System design, architecture decisions, delegation
-**Cite when:** Wrong abstractions, coupling issues, missing architecture docs
-**Key patterns:**
-- Read architecture before writing code
-- Understand the system context
-- Document decisions in PLAN.md
-
-### sr-engineering-director
-**Domain:** Multi-agent orchestration, phased builds, verification
-**Cite when:** Complex features need breakdown, sub-agent coordination, functional verification
-**Key files:**
-- `TECH-REQ.md` — Full stack specification
-- `CODING-STANDARDS.md` — Code conventions
-- `CONTRACTS-TEMPLATE.md` — API contracts
+Quick reference for citing skills in reviews. Load the full skill when deeper guidance needed.
 
 ---
 
 ## Backend
 
 ### sr-convex-expert
-**Domain:** Convex schema, queries, mutations, actions, deployment
-**Cite when:** Schema issues, auth patterns, deployment problems
-**Key rules:**
-- Use `_id` not `id` for document references
-- Use `_creationTime` not `createdAt` (built-in)
+**Domain:** Convex database, queries, mutations, actions, schemas
+**Key Rules:**
+- Use `_id` not `id`, `_creationTime` not `createdAt`
 - Index every query filter field
-- Use `v.optional()` for new fields
 - Use `--cmd` wrapper for Next.js deploys
+- Use internal functions for sensitive logic
+- New fields must be `v.optional()`
+
+**Cite when:** Schema issues, query patterns, auth in mutations, deployment
 
 ### sr-next-clerk-expert
-**Domain:** Clerk auth, middleware, protected routes, user sync
-**Cite when:** Auth flow issues, missing middleware, user sync patterns
-**Key patterns:**
-- Middleware for route protection
-- UserSyncProvider for Convex sync
-- Clerk JWT validation in Convex
+**Domain:** Clerk authentication in Next.js
+**Key Rules:**
+- Use `proxy.ts` not `middleware.ts` (Next.js 16+)
+- Never mix client/server auth patterns
+- Set all 4 redirect env vars
+- Use `auth()` server-side, `useAuth()` client-side
+
+**Cite when:** Auth errors, 500s, redirect loops, protected routes
 
 ---
 
 ## Frontend
 
 ### sr-react-design-expert
-**Domain:** UI/UX, component design, visual quality
-**Cite when:** Generic AI aesthetics, poor UX, missing states
-**Key principles:**
-- Bold, distinctive design choices
-- All interactive states (hover, active, disabled)
-- Consistent spacing and typography
-- No default shadcn without customization
+**Domain:** UI/UX, component design, styling
+**Key Rules:**
+- Avoid generic AI aesthetics
+- Every interactive element needs hover/active states
+- Use design system tokens, not arbitrary values
+- Prefer composition over configuration
 
-### sr-production-engineer
-**Domain:** 12-step dev workflow, PRs, deploys, verification
-**Cite when:** Missing CHANGELOG, no TODO tracking, deploy issues
-**Workflow:**
-1. Update TODO.md
-2. Implement
-3. Update CHANGELOG.md
-4. Create PR with Graphite
-5. Verify deploy
-
----
-
-## Mobile / Native
-
-### sr-native-architect
-**Domain:** React Native / Expo architecture, navigation, state
-**Cite when:** Mobile architecture decisions, platform-specific patterns
-**Key patterns:**
-- Expo Router for navigation
-- NativeWind for styling
-- Platform-specific code organization
+**Cite when:** Design quality, component structure, styling issues
 
 ### sr-native-engineer
-**Domain:** React Native implementation, components, performance
-**Cite when:** Mobile UI issues, performance problems, platform bugs
-**Key patterns:**
-- FlatList for long lists
-- Memoization for performance
-- Platform-specific styling
+**Domain:** React Native, Expo, NativeWind
+**Key Rules:**
+- Use NativeWind for styling
+- Platform-specific code in `.ios.tsx`/`.android.tsx`
+- Test on both platforms before merge
+
+**Cite when:** Mobile code, cross-platform issues
+
+### sr-native-architect
+**Domain:** Mobile app architecture
+**Key Rules:**
+- Offline-first for data-heavy apps
+- Proper navigation patterns (stack, tab, drawer)
+- State management decisions
+
+**Cite when:** App structure, navigation, state
+
+---
+
+## Apple Platforms
 
 ### sr-swift-architect
-**Domain:** iOS/macOS architecture, SwiftUI, data flow
-**Cite when:** Swift architecture decisions, SwiftUI patterns
-**Key patterns:**
-- MVVM with Observable
-- Dependency injection
-- Async/await patterns
+**Domain:** macOS/iOS architecture decisions
+**Key Rules:**
+- AppKit for complex macOS, UIKit for iOS
+- SwiftUI for simple UI only
+- Document-based app patterns
+
+**Cite when:** Architecture decisions, framework choice
 
 ### sr-swift-engineer
-**Domain:** Swift implementation, UI components, platform APIs
-**Cite when:** Swift code issues, UIKit/SwiftUI problems
-**Key patterns:**
-- SwiftUI view composition
-- Combine for reactivity
-- Platform API integration
+**Domain:** Swift implementation
+**Key Rules:**
+- Prefer native frameworks over SwiftUI
+- Proper memory management
+- AppKit/UIKit patterns
+
+**Cite when:** Implementation issues, Swift code quality
 
 ---
 
-## Global Standards
+## Process
 
-### STANDARDS.md (root)
-**Domain:** Cross-skill standards
-**Current standards:**
-- **Icons:** Phosphor Icons for all platforms
-  - Web: `@phosphor-icons/react`
-  - React Native: `phosphor-react-native`
-  - Swift: `phosphor-swift`
+### sr-production-engineer
+**Domain:** Dev workflow, PRs, deploys
+**Key Rules:**
+- Update TODO.md before work
+- Update CHANGELOG.md after
+- Use Graphite for stacked PRs
+- Run `vl` to verify Vercel deploys
+
+**Cite when:** Workflow issues, missing docs, deploy problems
+
+### sr-engineering-director
+**Domain:** Multi-agent orchestration
+**Key Rules:**
+- Phase builds into deliverables
+- Verify each phase before proceeding
+- Single agent + full context > many agents
+
+**Cite when:** Project structure, delegation issues
+
+### sr-software-architect
+**Domain:** Architecture documentation
+**Key Rules:**
+- Architecture before code
+- Document decisions in ARCHITECTURE.md
+- Contracts for cross-boundary interfaces
+
+**Cite when:** Missing architecture docs, unclear boundaries
 
 ---
 
-## Citation Format
+## Standards
 
-Use brackets with skill name:
+### STANDARDS.md (Global)
+**Key Rules:**
+- Phosphor Icons for all platforms
+- Document overrides in project
 
-```
-[sr-convex-expert] Use _creationTime instead of custom createdAt field
-[sr-production-engineer] Missing CHANGELOG entry
-[sr-react-design-expert] Button needs hover/active states
-[TECH-REQ.md#auth] Auth check required in mutation
-[CODING-STANDARDS.md] Use explicit return types on functions
-```
+**Cite when:** Icon library, global patterns
 
-For file-specific references:
-```
-[sr-engineering-director/TECH-REQ.md] Full stack specification
-[sr-engineering-director/CODING-STANDARDS.md] Code conventions
-```
+### TECH-REQ.md
+**Location:** sr-engineering-director/TECH-REQ.md
+**Key Rules:**
+- Error boundaries for async components
+- Loading states for all data fetching
+- Auth on all mutations
+
+**Cite when:** Technical requirements, patterns
