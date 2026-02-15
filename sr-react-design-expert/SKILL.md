@@ -1,6 +1,4 @@
 ---
-
-> **Global Standards:** See [../STANDARDS.md](../STANDARDS.md) for icon library and other cross-platform standards.
 name: sr-react-design-expert
 description: Create distinctive, production-grade frontend interfaces with high design quality. Use this skill when the user asks to build web components, pages, or applications. Generates creative, polished code that avoids generic AI aesthetics.
 ---
@@ -10,6 +8,52 @@ description: Create distinctive, production-grade frontend interfaces with high 
 # Frontend Design
 
 Create distinctive, production-grade frontend interfaces that avoid generic "AI slop" aesthetics. Implement real working code with exceptional attention to aesthetic details and creative choices.
+
+## Michael's Preferences (Override Everything)
+
+These are non-negotiable personal preferences that supersede other guidelines:
+
+### BANNED DEFAULT AESTHETICS
+Never use these 5 together as a set — they're overused AI defaults:
+- Minimal Editorial (magazine-style, serif, whitespace)
+- Bold & Playful (vibrant, rounded, energetic)  
+- Mountain Modern (dark, topo patterns, adventure)
+- Warm Community (earthy, hand-drawn, cozy)
+- Tech Forward (glassmorphism, gradients, SaaS)
+
+**Use the 100 aesthetics in `references/aesthetics-library.md` instead.** Pick from DIFFERENT CATEGORIES.
+
+### PHOTOS ARE MANDATORY
+- Never use placeholder images or generic icons as hero content
+- Source photos from: `~/Projects/www.hustlelaunch.com/public/assets/images/`
+- Source photos from: `~/Cloud/Projects/**/Photos/`
+- Source photos from: project's own `/public/images/`
+- If no photos exist, CREATE the image directory and note which images are needed
+
+### LEAD-GEN BUSINESS MODEL (for directory/listing sites)
+Sites like bestwnc.com exist to:
+1. **Get free listings** — make it dead simple to list a business for free
+2. **Sell upgrades** — placement priority, featured spots, premium badges, ad slots
+3. **Collect leads** — capture business owner info to sell them:
+   - Marketing services (HustleLaunch)
+   - Website redesigns (Cravees, HurleyUS)
+   - SEO packages
+4. **Drive local discovery** — the directory must feel useful to end users too
+
+**Every design must include:**
+- Clear "List Your Business FREE" CTA (primary action)
+- "Upgrade Your Listing" or "Get Featured" secondary CTAs
+- Trust signals (# of businesses listed, happy testimonials)
+- Email capture or contact form
+- Local community vibe — this isn't a sterile SaaS
+
+### VISUAL PREFERENCES
+- **Dark mode by default** — light mode secondary
+- **High contrast** — readable text, not washed out
+- **No pure black** — use rich dark tones (slate-950, zinc-950, neutral-950)
+- **Photos over illustrations** — real beats illustrated
+- **Bold typography** — display fonts that make a statement
+- **Avoid sameness** — each project should feel distinct
 
 ## Stack Context
 
@@ -69,126 +113,105 @@ These rules override aesthetic preferences. They are non-negotiable.
 - Follow established UX conventions over trendy styling
 - When in doubt, conventional beats clever
 
-## Aesthetics Guidelines
+## Aesthetics Selection (MANDATORY)
 
-### Typography
+**Read `references/aesthetics-library.md` before designing.**
 
-Choose fonts that serve the design. For standalone projects, pair a distinctive display font with a clean body font. When working in an existing project, use the project's established fonts.
+When asked for multiple variants:
+1. Select from DIFFERENT CATEGORIES — never 5 from the same section
+2. Match aesthetic to client industry and audience
+3. Consider competitor differentiation
+4. Test both light AND dark modes
+
+**100 aesthetics organized into 7 categories:**
+1. Editorial & Publishing (1-10)
+2. Tech & SaaS (11-25)
+3. Luxury & High-End (26-40)
+4. Creative & Agency (41-55)
+5. Cultural & Arts (56-70)
+6. Retro & Nostalgic (71-85)
+7. Experimental & Avant-Garde (86-100)
+
+## Typography
+
+Choose fonts that serve the design. For standalone projects, pair a distinctive display font with a clean body font.
 
 **Good font choices** (vary between projects):
 - Display: Playfair Display, Clash Display, Cabinet Grotesk, Instrument Serif, Syne, General Sans, Satoshi
 - Body: DM Sans, Plus Jakarta Sans, Source Serif 4, Outfit, Manrope
 
-**Avoid converging** on the same font across projects. If you used Syne last time, pick something different.
+**Avoid converging** on the same font across projects.
 
-### Color & Theme
+## Color & Theme
 
 Commit to a cohesive palette. Use CSS variables for consistency.
 
 - Dominant color with sharp accents outperforms evenly-distributed palettes
-- Dark themes: avoid pure black (#000) — use rich dark tones (e.g., Catppuccin base/surface colors)
-- Light themes: avoid pure white (#fff) backgrounds for large surfaces — use warm/cool tints
-- Accent colors should appear in 2-3 places max, not everywhere
+- Dark themes: avoid pure black (#000) — use rich dark tones
+- Light themes: avoid pure white (#fff) backgrounds for large surfaces
+- Accent colors should appear in 2-3 places max
 
-### Motion
+## Motion
 
-Prioritize CSS-only animations. Reserve JS animation libraries for complex orchestration.
+Prioritize CSS-only animations.
 
 **High-impact moments:**
 - Page load: staggered reveals with `@keyframes` and `animation-delay`
-- Scroll: IntersectionObserver-based reveals (the project uses a `useScrollReveal` hook)
+- Scroll: IntersectionObserver-based reveals
 - Hover: subtle transforms and color shifts
-- Transitions: `transition-*` utilities for state changes
 
-**Low-value motion to skip:**
-- Parallax on every section
-- Bouncing elements that distract from content
-- Loading spinners where skeleton screens would work better
-
-### Spatial Composition
-
-Break out of the grid when it serves the design — asymmetry, overlap, diagonal flow, generous negative space. But grid-breaking should be intentional. A marketing hero section can be wild; a data table should not.
-
-### Backgrounds & Depth
-
-Create atmosphere through layering:
-- Gradient meshes, noise textures, geometric patterns
-- `backdrop-blur` for glassmorphic surfaces
-- Layered transparencies and dramatic shadows
-- Grain overlays and decorative borders
-
-These work on hero sections and feature showcases. Don't apply them to every surface.
+**Skip:**
+- Parallax everywhere
+- Bouncing distractions
+- Loading spinners (use skeletons)
 
 ## Working with shadcn/ui
 
-shadcn/ui components are a starting point, not a ceiling.
-
 **Extend, don't fight:**
-- Use `cn()` to merge custom classes with defaults
-- Override via Tailwind — don't fork component files for cosmetic changes
-- Use CVA variants when a component needs multiple visual modes
-- Add wrapper components for project-specific patterns (e.g., a `FeatureCard` that composes `Card` + `CardHeader` + `CardContent`)
-
-**Don't:**
-- Recreate components that shadcn already provides
-- Add inline styles when Tailwind classes exist
-- Override Radix accessibility primitives (focus rings, keyboard nav, ARIA)
+- Use `cn()` to merge custom classes
+- Override via Tailwind — don't fork components
+- Use CVA variants for multiple visual modes
 
 ## Accessibility
 
-Accessibility is not optional. Every interface must:
-
-- Use semantic HTML (`nav`, `main`, `section`, `article`, `aside`, `header`, `footer`)
-- Include proper heading hierarchy (one `h1` per page, sequential `h2`→`h3`→`h4`)
-- Provide alt text on all images (descriptive for content images, empty `alt=""` for decorative)
-- Support keyboard navigation — all interactive elements focusable, visible focus rings
-- Maintain WCAG AA color contrast (4.5:1 for body text, 3:1 for large text)
-- Use ARIA labels on icon-only buttons and non-obvious interactive elements
-- Include skip links for keyboard users
-
-Don't sacrifice accessibility for aesthetics. They're not in conflict — good design is accessible design.
+Non-negotiable:
+- Semantic HTML (`nav`, `main`, `section`, `article`)
+- Proper heading hierarchy (one `h1`, sequential h2→h3→h4)
+- Alt text on all images
+- Keyboard navigation with visible focus rings
+- WCAG AA contrast (4.5:1 body, 3:1 large)
+- ARIA labels on icon-only buttons
 
 ## Anti-Patterns
 
 **Generic AI output:**
 - Cookie-cutter hero → heading → 3-card grid → CTA → footer
-- Purple-to-blue gradients on white backgrounds
+- Purple-to-blue gradients on white
 - Evenly-spaced sections with identical padding
-- Stock placeholder text that wasn't replaced
+- Placeholder text that wasn't replaced
+- NO PHOTOS
 
 **Implementation mistakes:**
-- `w-full` buttons (use content-width)
-- Gradient backgrounds on buttons (use solid colors)
-- `rounded-*` on images inside cards (let the card handle it)
-- Centered submit buttons (right-align them)
-- Single-column forms where 2-column works better
-- `px` values instead of Tailwind spacing scale
-- Hardcoded colors instead of CSS variables or theme tokens
-
-**Overengineering:**
-- Animation on every element (pick 2-3 high-impact moments)
-- Custom scroll hijacking
-- Canvas backgrounds that tank performance on mobile
-- Parallax that causes layout thrashing
+- `w-full` buttons
+- Gradient button backgrounds
+- `rounded-*` on images inside cards
+- Centered submit buttons
+- Hardcoded colors
 
 ## Pre-Flight Checklist
 
-Before marking a design implementation complete:
-
+- [ ] Has real photos, not placeholders
 - [ ] Renders without console errors
-- [ ] All interactive elements work (buttons, links, forms)
 - [ ] Responsive at 375px, 768px, 1024px, 1440px
-- [ ] Keyboard navigable — tab through the entire page
+- [ ] Keyboard navigable
 - [ ] Color contrast passes WCAG AA
-- [ ] Images have appropriate alt text
-- [ ] No `w-full` buttons, no gradient buttons, submit buttons right-aligned
-- [ ] Card structure follows convention (title in header, content in content)
-- [ ] Forms use 2-column layout where applicable
-- [ ] Animations are CSS-first and don't cause layout shift
-- [ ] Dark/light theme works if the project supports theming
-- [ ] No hardcoded colors — uses theme tokens or CSS variables
+- [ ] Images have alt text
+- [ ] No `w-full` buttons, no gradient buttons
+- [ ] Dark/light theme both work
+- [ ] Lead-gen CTAs are prominent (if applicable)
+- [ ] No banned aesthetic combinations
 
 ## Related Skills
 
-- Use `/sr-production-engineer` for PR workflow after implementation
-- Use `/sr-software-architect` when the UI is part of a larger architectural change
+- `/sr-production-engineer` — PR workflow after implementation
+- `/sr-software-architect` — architectural changes
