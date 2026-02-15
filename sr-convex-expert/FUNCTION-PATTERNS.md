@@ -104,7 +104,7 @@ export const create = mutation({
       status: args.status ?? "draft",
       viewCount: 0,
       likeCount: 0,
-      createdAt: now,
+      _creationTime is automatic
       updatedAt: now,
     });
   },
@@ -381,7 +381,7 @@ export const toggleLike = mutation({
       await ctx.db.insert("post_likes", {
         postId: args.postId,
         profileId: user._id,
-        createdAt: Date.now(),
+        _creationTime is automatic
       });
       await ctx.db.patch(args.postId, {
         likeCount: post.likeCount + 1,
@@ -428,7 +428,7 @@ export const upsertProfile = mutation({
       email: args.email,
       avatarUrl: args.avatarUrl,
       plan: "free",
-      createdAt: now,
+      _creationTime is automatic
       updatedAt: now,
     });
   },
@@ -468,7 +468,7 @@ export const createNotification = mutation({
       data: args.data,
       idempotencyKey: args.idempotencyKey,
       read: false,
-      createdAt: Date.now(),
+      _creationTime is automatic
     });
   },
 });
@@ -490,7 +490,7 @@ export const scheduleAssessment = mutation({
       profileId: args.profileId,
       type: args.type,
       status: "pending",
-      createdAt: Date.now(),
+      _creationTime is automatic
     });
 
     // Schedule the actual work
@@ -622,13 +622,13 @@ export const createPost = mutation({
       .take(10);
 
     const oneHourAgo = Date.now() - 60 * 60 * 1000;
-    const postsInLastHour = recentPosts.filter((p) => p.createdAt > oneHourAgo);
+    const postsInLastHour = recentPosts.filter((p) => p._creationTime > oneHourAgo);
 
     if (postsInLastHour.length >= 5) {
       throw new ConvexError({
         code: "RATE_LIMITED",
         message: "You can only create 5 posts per hour",
-        retryAfter: postsInLastHour[4].createdAt + 60 * 60 * 1000,
+        retryAfter: postsInLastHour[4]._creationTime + 60 * 60 * 1000,
       });
     }
 
@@ -719,7 +719,7 @@ export const cleanup = internalMutation({
 
     let deleted = 0;
     for (const item of old) {
-      if (item.createdAt < cutoff) {
+      if (item._creationTime < cutoff) {
         await ctx.db.delete(item._id);
         deleted++;
       }

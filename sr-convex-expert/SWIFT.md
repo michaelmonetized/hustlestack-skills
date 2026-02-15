@@ -60,7 +60,7 @@ struct Profile: Codable {
     let _id: String
     let name: String
     let email: String?
-    let createdAt: Double
+    let _creationTime: Double
 }
 
 func getProfile(userId: String) async throws -> Profile? {
@@ -151,7 +151,7 @@ struct Profile: Codable, Identifiable {
     let location: String?
     let avatarUrl: String?
     let plan: ProfilePlan
-    let createdAt: ConvexTimestamp
+    let _creationTime: ConvexTimestamp
     let updatedAt: ConvexTimestamp
     
     var id: ConvexId { _id }
@@ -174,7 +174,7 @@ struct Post: Codable, Identifiable {
     let status: PostStatus
     let viewCount: Int
     let likeCount: Int
-    let createdAt: ConvexTimestamp
+    let _creationTime: ConvexTimestamp
     let updatedAt: ConvexTimestamp
     let publishedAt: ConvexTimestamp?
     

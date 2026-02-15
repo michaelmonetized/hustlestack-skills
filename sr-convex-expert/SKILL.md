@@ -34,6 +34,51 @@ These rules prevent production disasters. Violations cause broken builds and dat
 | VI | Use internal functions for sensitive logic | Security bypass |
 | VII | Store secrets in Convex dashboard, not code | Credential leaks |
 | VIII | Test migrations in preview deployment first | Production data loss |
+| IX | Use `_id` not `id` for document references | Type errors, query failures |
+| X | Use `_creationTime` not `createdAt` | Redundant field, wasted storage |
+
+---
+
+## ⚠️ BUILT-IN FIELDS — NEVER DEFINE THESE
+
+Convex automatically provides on EVERY document:
+- `_id` — Document ID (type: `Id<"tableName">`)
+- `_creationTime` — Unix timestamp when created (milliseconds)
+
+**❌ WRONG:**
+```typescript
+users: defineTable({
+  id: v.string(),           // WRONG - Convex provides _id
+  createdAt: v.number(),    // WRONG - Convex provides _creationTime
+})
+```
+
+**✅ CORRECT:**
+```typescript
+users: defineTable({
+  clerkId: v.string(),
+  email: v.string(),
+  // _id and _creationTime are automatic - don't define them!
+})
+
+// Access them like any other field:
+const user = await ctx.db.get(args.userId);  // userId is Id<"users">
+console.log(user._id, user._creationTime);
+```
+
+**If you need `updatedAt`**, define it explicitly (Convex doesn't auto-track updates):
+```typescript
+users: defineTable({
+  email: v.string(),
+  updatedAt: v.optional(v.number()),
+})
+
+// Update it manually in mutations:
+await ctx.db.patch(userId, {
+  email: newEmail,
+  updatedAt: Date.now(),
+});
+```
 
 ---
 
@@ -147,13 +192,13 @@ export const createProfile = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
 
-    const now = Date.now();
+    // _creationTime is automatic - don't define createdAt
     return await ctx.db.insert("profiles", {
       clerkId: identity.subject,
       name: args.name,
       email: args.email,
-      createdAt: now,
-      updatedAt: now,
+      // Only define updatedAt if you need to track modifications
+      updatedAt: Date.now(),
     });
   },
 });
