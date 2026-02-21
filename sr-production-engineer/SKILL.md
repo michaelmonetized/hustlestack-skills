@@ -109,6 +109,34 @@ Report completion format:
 - **CHANGELOG.md** — Version history
 - **PLAN.md** — Architecture decisions (optional)
 
+## Branch Cleanup (CRITICAL)
+
+⚠️ **ALWAYS MERGE BEFORE DELETE**
+
+When cleaning up branches, merge first:
+```bash
+# RIGHT WAY
+git checkout main
+git merge feature-branch --no-edit  # MERGE FIRST
+git branch -D feature-branch         # THEN delete
+
+# WRONG WAY — LOSES WORK
+git branch -D feature-branch  # ❌ NEVER DO THIS
+```
+
+**Recovery if you fuck up:**
+```bash
+git reflog                    # Find the lost commit hash
+git checkout <hash> -- .      # Restore files
+git commit -m "Recover"
+```
+
+When someone says "merge X into Y and clean up":
+1. `git checkout Y`
+2. `git merge X` — bring X's changes INTO Y
+3. Verify changes are in Y
+4. THEN delete X
+
 ## Tools Required
 
 - `gt` — [Graphite CLI](https://graphite.dev) for stacked PRs
